@@ -1,0 +1,44 @@
+--- 
+- name: Create portainer volume
+  community.docker.docker_volume:
+    name: portainer_data
+
+- name: Create portainer container
+  community.docker.docker_container:
+    name: portainer
+    image: portainer/portainer-ce:lts
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: yes 
+    state: started
+  tags: portainer
+
+- name: Create homeassistant config directory
+  file:
+    path: "~/configs/homeassistant/"
+    state: directory
+    mode: '0755'
+
+- name: Create homeassistant container
+  become: true
+  community.docker.docker_container:
+    name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    published_ports:
+      - "8123:8123"
+    ports:
+      - "8123:8123"
+    volumes:
+      - "~/configs/homeassistant/config:/config"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/run/dbus:/run/dbus:ro"
+    restart: yes
+    privileged: yes
+    network_mode: host
+    state: started
+  tags: homeassistant

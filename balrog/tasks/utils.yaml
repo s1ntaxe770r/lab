@@ -1,0 +1,33 @@
+## this would be for things like gotop, neofetch etc. 
+---
+
+- name: Install Utils
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - neofetch
+    - tmux
+    - zsh
+    - speedtest-cli
+
+- name: Install pipes.sh
+  block:
+    - name: Clone pipes.sh repository
+      git:
+        repo: https://github.com/pipeseroni/pipes.sh.git
+        dest: /tmp/pipes.sh
+        force: true
+      become: true
+
+    - name: Install pipes.sh
+      make:
+        chdir: /tmp/pipes.sh
+        target: install
+      become: true
+
+    - name: Clean up pipes.sh source
+      file:
+        path: /tmp/pipes.sh
+        state: absent
+      become: true

@@ -1,0 +1,34 @@
+---
+- name: Setup Balrog
+  hosts: balrog
+  gather_facts: true
+  vars_files:
+    - vars.yaml
+
+
+
+  tasks:
+    - name: Install Essentials
+      import_tasks: tasks/essentials.yaml
+      tags: essentials
+
+    - name: Install Utils
+      import_tasks: tasks/utils.yaml
+      tags: utils
+
+    - name: Install Services
+      import_tasks: tasks/services.yaml
+      tags: services
+
+    - name: Start Containers
+      import_tasks: tasks/containers.yaml
+      tags: containers
+
+
+    
+
+## To run only specific tasks, use the following command:
+## ansible-playbook playbook.yaml --tags "essentials"
+## ansible-playbook playbook.yaml --tags "utils"
+## ansible-playbook playbook.yaml --tags "services"
+## ansible-playbook playbook.yaml --tags "essentials,utils,services"
