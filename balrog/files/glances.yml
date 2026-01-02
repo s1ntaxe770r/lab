@@ -1,0 +1,169 @@
+pages:
+  - name: Home
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+
+          - type: rss
+            limit: 10
+            collapse-after: 3
+            cache: 12h
+            feeds:
+              - url: https://selfh.st/rss/
+                title: selfh.st
+                limit: 4
+              - url: https://ciechanow.ski/atom.xml
+              - url: https://www.joshwcomeau.com/rss.xml
+                title: Josh Comeau
+              - url: https://samwho.dev/rss.xml
+              - url: https://ishadeed.com/feed.xml
+                title: Ahmad Shadeed
+
+          - type: twitch-channels
+            channels:
+              - theprimeagen
+              - j_blow
+              - giantwaffle
+              - cohhcarnage
+              - christitustech
+              - marekcounts
+
+      - size: full
+        widgets:
+          - type: group
+            widgets:
+              - type: hacker-news
+              - type: lobsters
+
+          - type: videos
+            channels:
+              - UCXuqSBlHAE6Xw-yeJA0Tunw # Linus Tech Tips
+              - UCR-DXc1voovS8nhAvccRZhg # Jeff Geerling
+              - UCBJycsmduvYEL83R_U4JriQ # Marques Brownlee
+              - UCHnyfMqiRRG1u-2MsSQLbXA # Veritasium
+
+          - type: monitor
+            cache: 1m
+            title: Services
+            sites:
+              - title: Jellyfin
+                url: http://chronos:8096
+                icon: sh:jellyfin
+              - title: qBittorrent
+                url: http://chronos:8080
+                icon: sh:qbittorrent
+              - title: Prowlarr
+                url: http://chronos:9696
+                icon: sh:prowlarr-radarr
+              - title: Grafana
+                url: http://chronos:3000
+                icon: sh:grafana
+
+          - type: group
+            widgets:
+              - type: reddit
+                subreddit: technology
+                show-thumbnails: true
+              - type: reddit
+                subreddit: selfhosted
+                show-thumbnails: true
+
+      - size: small
+        widgets:
+          - type: weather
+            location: Lagos, Nigeria
+            units: metric
+            hour-format: 12h
+
+          - type: custom-api
+            title: Steam Specials
+            cache: 12h
+            url: https://store.steampowered.com/api/featuredcategories?cc=us
+            template: |
+              <ul class="list list-gap-10 collapsible-container" data-collapse-after="5">
+              {{ range .JSON.Array "specials.items" }}
+                {{ $header := .String "header_image" }}
+                {{ $urlPrefix := "https://store.steampowered.com/sub/" }}
+                {{ if findMatch "/steam/apps/" $header }}
+                  {{ $urlPrefix = "https://store.steampowered.com/app/" }}
+                {{ end }}
+                <li>
+                  <a class="size-h4 color-highlight block text-truncate" href="{{ $urlPrefix }}{{ .Int "id" }}/">{{ .String "name" }}</a>
+                  <ul class="list-horizontal-text">
+                    <li>{{ .Int "final_price" | toFloat | mul 0.01 | printf "$%.2f" }}</li>
+                    {{ $discount := .Int "discount_percent" }}
+                    <li{{ if ge $discount 40 }} class="color-positive"{{ end }}>{{ $discount }}% off</li>
+                  </ul>
+                </li>
+              {{ end }}
+              </ul>
+
+          - type: custom-api
+            title: qBittorrent
+            cache: 10s
+            options:
+              view: "detailed"
+              mode: "upload"
+            subrequests:
+              transfer:
+                url: http://chronos:8080/api/v2/transfer/info
+              seeding:
+                url: http://chronos:8080/api/v2/torrents/info
+                parameters:
+                  filter: seeding
+              leeching:
+                url: http://chronos:8080/api/v2/torrents/info
+                parameters:
+                  filter: downloading
+            template: |
+              {{ $transfer := .Subrequest "transfer" }}
+              {{ $seeding := .Subrequest "seeding" }}
+              {{ $leeching := .Subrequest "leeching" }}
+
+              {{ if and (eq $transfer.Response.StatusCode 200) (eq $seeding.Response.StatusCode 200) (eq $leeching.Response.StatusCode 200) }}
+
+                {{ $isDetailed := eq (.Options.StringOr "view" "detailed") "detailed" }}
+                {{ $mode := .Options.StringOr "mode" "default" }}
+
+                {{ if $isDetailed }}
+                <div class="list" style="--list-gap: 15px;">
+                  <div class="flex justify-between text-center">
+                    <div>
+                      {{ $dlSpeed := $transfer.JSON.Float "dl_info_speed" }}
+                      <div class="color-highlight size-h3">
+                        {{ printf "%.1f MB/s" (div $dlSpeed 1000000.0) }}
+                      </div>
+                      <div class="size-h6">DOWNLOADING</div>
+                    </div>
+
+                    {{ if eq $mode "upload" }}
+                    <div>
+                      {{ $ulSpeed := $transfer.JSON.Float "up_info_speed" }}
+                      <div class="color-highlight size-h3">
+                        {{ printf "%.1f MB/s" (div $ulSpeed 1000000.0) }}
+                      </div>
+                      <div class="size-h6">UPLOADING</div>
+                    </div>
+                    {{ end }}
+
+                    <div>
+                      <div class="color-highlight size-h3">{{ len ($seeding.JSON.Array "") }}</div>
+                      <div class="size-h6">SEEDING</div>
+                    </div>
+                  </div>
+                </div>
+
+                {{ else }}
+                <div class="color-negative text-center">
+                  <p>Error fetching qBittorrent data.</p>
+                </div>
+                {{ end }}
+
+              {{ else }}
+                <div class="color-negative text-center">
+                  <p>Error fetching qBittorrent data.</p>
+                  <p class="size-sm">Check Web UI auth & network access.</p>
+                </div>
+              {{ end }}

@@ -21,3 +21,6 @@
     - libssl-dev
     - libffi-dev
     - golang-go 
+    - net-tools
+    - network-manager
+    - tmux

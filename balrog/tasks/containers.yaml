@@ -1,44 +1,282 @@
---- 
-- name: Create portainer volume
-  community.docker.docker_volume:
-    name: portainer_data
+# ---
+# - name: Create portainer volume
+#   community.docker.docker_volume:
+#     name: portainer_data
 
-- name: Create portainer container
-  community.docker.docker_container:
-    name: portainer
-    image: portainer/portainer-ce:lts
-    ports:
-      - "8000:8000"
-      - "9000:9000"
-      - "9443:9443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
-    restart: yes 
-    state: started
-  tags: portainer
+# - name: Create portainer container
+#   community.docker.docker_container:
+#     name: portainer
+#     image: portainer/portainer-ce:lts
+#     ports:
+#       - "8000:8000"
+#       - "9000:9000"
+#       - "9443:9443"
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock
+#       - portainer_data:/data
+#     restart: yes
+#     state: started
+#   tags: portainer
 
-- name: Create homeassistant config directory
+#### ======JELLY #######
+- name: Create jellyfin config directory
   file:
-    path: "~/configs/homeassistant/"
+    path: "~/configs/jellyfin/config"
+    state: directory
+    mode: "0755"
+
+- name: Create jellyfin cache directory
+  file:
+    path: "~/configs/jellyfin/cache"
+    state: directory
+    mode: "0755"
+
+
+- name: Create media directory
+  file:
+    path: "~/media/movives"
     state: directory
     mode: '0755'
 
-- name: Create homeassistant container
+- name: Create jellyfin container
   become: true
   community.docker.docker_container:
-    name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
-    published_ports:
-      - "8123:8123"
+    name: jellyfin
+    image: "jellyfin/jellyfin:latest"
+    # user: "1000:1000"
     ports:
-      - "8123:8123"
+      - 8096:8096/tcp
+      - 7359:7359/udp
     volumes:
-      - "~/configs/homeassistant/config:/config"
-      - "/etc/localtime:/etc/localtime:ro"
-      - "/run/dbus:/run/dbus:ro"
-    restart: yes
-    privileged: yes
-    network_mode: host
+      - "~/configs/jellyfin/config:/config"
+      - "~/configs/jellyfin/cache:/cache"
+      - "~/media:/media"
+    restart_policy: unless-stopped
+    privileged: true
     state: started
-  tags: homeassistant
+  tags: jellyfin
+
+### ======JELLY #######
+
+#### ======QBIT #######
+- name: Create qbittorrent-nox config directory
+  file:
+    path: "~/configs/qbittorrent-nox/config"
+    state: directory
+    mode: "0755"
+  tags: qbittorrent
+
+- name: Create qbittorrent-nox downloads directory
+  file:
+    path: "~/torrents"
+    state: directory
+    mode: "0755"
+  tags: qbittorrent
+
+- name: Create qbittorrent-nox container
+  become: true
+  community.docker.docker_container:
+    name: qbittorrent-nox
+    image: "qbittorrentofficial/qbittorrent-nox:latest"
+    env:
+      QBT_EULA: "accept"
+      QBT_VERSION: "latest"
+      QBT_WEBUI_PORT: "8080"
+      TZ: "{{ ansible_facts.get('timezone', 'UTC') }}"
+    ports:
+      - 6881:6881/tcp
+      - 6881:6881/udp
+      - 8080:8080/tcp
+    volumes:
+      - "~/configs/qbittorrent-nox/config:/config"
+      - "~/torrents:/downloads"
+    read_only: true
+    tmpfs:
+      - /tmp
+    tty: true
+    restart_policy: unless-stopped
+    stop_timeout: 1800
+    state: started
+  tags: qbittorrent
+#### ======QBIT #######
+
+#### ======RADARRR #######
+# - name: Create radarr config directory
+#   file:
+#     path: "~/configs/radarr/config"
+#     state: directory
+#     mode: '0755'
+
+# - name: Create radarr movies directory
+#   file:
+#     path: "~/movies"
+#     state: directory
+#     mode: '0755'
+
+# - name: Create radarr container
+#   community.docker.docker_container:
+#     name: radarr
+#     image: "lscr.io/linuxserver/radarr:latest"
+#     ports:
+#       - "7878:7878"
+#     volumes:
+#       - "~/configs/radarr/config:/config"
+#       - "/mnt/thomas/media/movies:/movies"
+#     restart_policy: unless-stopped
+#     state: started
+#   tags: radarr
+# #### ======RADARRR #######
+
+#### ======LIDARR #######
+- name: Create lidarr config directory
+  file:
+    path: "~/configs/lidarr/config"
+    state: directory
+    mode: "0755"
+  tags: lidarr
+
+- name: Create lidarr music directory
+  file:
+    path: "~/music"
+    state: directory
+    mode: "0755"
+  tags: lidarr
+
+- name: Create lidarr downloads directory
+  file:
+    path: "~/downloads"
+    state: directory
+    mode: "0755"
+  tags: lidarr
+
+- name: Create lidarr container
+  become: true
+  community.docker.docker_container:
+    name: lidarr
+    image: lscr.io/linuxserver/lidarr:latest
+    env:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ ansible_facts.get('timezone', 'UTC') }}"
+    ports:
+      - "8686:8686"
+    volumes:
+      - "~/configs/lidarr/config:/config"
+      - "~/music:/music"
+      - "~/downloads:/downloads"
+    restart_policy: unless-stopped
+    state: started
+  tags: lidarr
+#### ======LIDARR #######
+
+#### ======GLANCES #######
+- name: Create glances config directory
+  file:
+    path: "~/configs/glances/config"
+    state: directory
+    mode: "0755"
+  tags: glances
+
+- name: Copy glances config file
+  copy:
+    src: "glances.yml"
+    dest: "~/configs/glances/config/glance.yml"
+    mode: "0644"
+  tags: glances
+
+- name: Create glances container
+  community.docker.docker_container:
+    name: glances
+    image: "glanceapp/glance:latest"
+    ports:
+      - "8888:8080"
+    volumes:
+      - "~/configs/glances/config:/app/config"
+    restart_policy: unless-stopped
+    state: started
+  tags: glances
+#### ======GLANCES #######
+
+#### ======PROWLARR ======
+- name: Create prowlarr config directory
+  file:
+    path: "~/configs/prowlarr/config"
+    state: directory
+    mode: "0755"
+  tags: prowlarr
+
+- name: Create prowlarr container
+  become: true
+  community.docker.docker_container:
+    name: prowlarr
+    image: lscr.io/linuxserver/prowlarr:latest
+    env:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: "{{ ansible_facts.get('timezone', 'UTC') }}"
+    ports:
+      - "9696:9696"
+    volumes:
+      - "~/configs/prowlarr/config:/config"
+    restart_policy: unless-stopped
+    state: started
+  tags: prowlarr
+#### ======PROWLARR ======
+
+# #### ====== MONITORING (PROMETHEUS + NODE EXPORTER) ======
+
+# - name: Create monitoring config directory
+#   file:
+#     path: "~/configs/monitoring"
+#     state: directory
+#     mode: "0755"
+#   tags: monitoring
+
+# - name: Set ownership on grafana data directory
+#   become: true
+#   file:
+#     path: "{{ ansible_env.HOME }}/configs/grafana/data"
+#     owner: 472
+#     group: 472
+#     recurse: true
+#   tags: monitoring
+
+# - name: Copy monitoring docker-compose file
+#   copy:
+#     src: "monitoring/docker-compose.yml"
+#     dest: "~/configs/monitoring/docker-compose.yml"
+#     mode: "0644"
+#   tags: monitoring
+
+# - name: Copy Prometheus config
+#   copy:
+#     src: "monitoring/prometheus.yml"
+#     dest: "~/configs/monitoring/prometheus.yml"
+#     mode: "0644"
+#   tags: monitoring
+
+# - name: Run `docker compose up` again
+#   community.docker.docker_compose_v2:
+#     project_src: "~/configs/monitoring"
+#     state: present
+#   become: true
+#   tags: monitoring
+
+# #### ====== GRAFANA ======
+
+# - name: Create grafana base config directory
+#   file:
+#     path: "~/configs/grafana"
+#     state: directory
+#     mode: "0755"
+#   tags: monitoring
+
+# - name: Create grafana data directory
+#   file:
+#     path: "~/configs/grafana/data"
+#     state: directory
+#     mode: "0755"
+#   tags: monitoring
+# #### ====== GRAFANA ======
+
+# #### ====== MONITORING ======

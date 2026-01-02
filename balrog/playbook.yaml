@@ -1,24 +1,21 @@
 ---
 - name: Setup Balrog
-  hosts: balrog
-  gather_facts: true
-  vars_files:
-    - vars.yaml
-
-
+  hosts: all
+  # gather_facts: true
 
   tasks:
-    - name: Install Essentials
-      import_tasks: tasks/essentials.yaml
-      tags: essentials
+    # - name: Install Essentials
+    #   import_tasks: tasks/essentials.yaml
+    
+    #   tags: essentials
 
-    - name: Install Utils
-      import_tasks: tasks/utils.yaml
-      tags: utils
+    # - name: Install Utils
+    #   import_tasks: tasks/utils.yaml
+    #   tags: utils
 
-    - name: Install Services
-      import_tasks: tasks/services.yaml
-      tags: services
+    # - name: Install Services
+    #   import_tasks: tasks/services.yaml
+    #   tags: services
 
     - name: Start Containers
       import_tasks: tasks/containers.yaml

@@ -1,56 +1,33 @@
----
-# Services installation tasks
-# This file handles services that require custom installation methods
 
-- name: Install Raspotify
-  block:
-    - name: Install curl (if not already installed)
-      apt:
-        name: curl
-        state: present
-    
-    - name: Download and run raspotify install script
-      shell: curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
-      args:
-        creates: /usr/bin/raspotify
-      become: true
-      become_user: root
-  tags: raspotify
-  
 
-- name: Install docker 
-  block:
-    - name: Install Docker
-      ansible.builtin.import_role:
-        name: geerlingguy.docker
-      tags: docker
+# - name: Setup Docker
+#   import_role:
+#     name: geerlingguy.docker
+#   tags: docker
 
-# - name: Install Docker
+# - name: Ensure current user is added to docker group
+#   become: true
+#   ansible.builtin.user:
+#     name: "{{ ansible_user }}"
+#     groups: docker
+#     append: true
+#   tags: docker
+
+# - name: Setup NFS
+#   become: true
 #   block:
-#     - name: Add Docker GPG apt Key
-#       apt_key:
-#         url: https://download.docker.com/linux/ubuntu/gpg
-#         state: present
+#     - name: Create media directory under /mnt/thomas
+#       ansible.builtin.file:
+#         path: /mnt/thomas/media
+#         state: directory
+#         owner: nobody
+#         group: nogroup
+#         mode: '0777'
 
-#     - name: Add Docker Repository
-#       apt_repository:
-#         repo: deb https://download.docker.com/linux/ubuntu focal stable
-#         state: present
-
-#     - name: Update apt and install docker-ce
-#       apt:
-#         name: docker-ce
-#         state: latest
-#         update_cache: true
-
-#     - name: Install Docker Module for Python
-#       pip:
-#         name: docker
-    
-#     - name: Install Docker Compose
-#   tags: docker 
-
-## use geerlingguy.docker collection not role
-
-
-  
+#     - name: Install and configure NFS server
+#       ansible.builtin.import_role:
+#         name: geerlingguy.nfs
+#       vars:
+#         nfs_exports:
+#           - "/mnt/thomas/media *(rw,async,no_subtree_check,no_root_squash)"
+#   tags: nfs

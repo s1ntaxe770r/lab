@@ -1,33 +1,86 @@
 ## this would be for things like gotop, neofetch etc. 
 ---
 
-- name: Install Utils
-  apt:
-    name: "{{ item }}"
+# - name: Install Utils
+#   apt:
+#     name: "{{ item }}"
+#     state: present
+#   with_items:
+#     - neofetch
+#     - tmux
+#     - zsh
+#     - speedtest-cli
+
+# - name: Install pipes.sh
+#   block:
+#     - name: Clone pipes.sh repository
+#       git:
+#         repo: https://github.com/pipeseroni/pipes.sh.git
+#         dest: /tmp/pipes.sh
+#         force: true
+#       become: true
+
+#     - name: Install pipes.sh
+#       make:
+#         chdir: /tmp/pipes.sh
+#         target: install
+#       become: true
+
+#     - name: Clean up pipes.sh source
+#       file:
+#         path: /tmp/pipes.sh
+#         state: absent
+#       become: true
+
+- name: Ensure /mnt/thomas directory exists for mounting drive
+  file:
+    path: "/mnt/thomas"
+    state: directory
+    mode: '0755'
+  become: true
+
+
+- name: Set ownership of /mnt/thomas to current user and group
+  ansible.builtin.file:
+    path: "/mnt/thomas"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    recurse: true
+  become: true
+
+
+- name: Set permissions on /mnt/thomas
+  ansible.builtin.file:
+    path: "/mnt/thomas"
+    mode: '0744'
+    recurse: true
+  become: true
+
+
+- name: Backup /etc/fstab before making changes
+  ansible.builtin.copy:
+    src: /etc/fstab
+    dest: /etc/fstab.bkp
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: true
+  become: true
+  tags: backup
+
+  
+- name: Ensure simple /dev/sdb fstab entry for /mnt/thomas
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: "^/dev/sdb\\s+/mnt/thomas\\s"
+    line: "/dev/sdb /mnt/thomas auto defaults 0 2"
     state: present
-  with_items:
-    - neofetch
-    - tmux
-    - zsh
-    - speedtest-cli
+    insertafter: EOF
+    backup: false
+  become: true
+  tags: fstab
 
-- name: Install pipes.sh
-  block:
-    - name: Clone pipes.sh repository
-      git:
-        repo: https://github.com/pipeseroni/pipes.sh.git
-        dest: /tmp/pipes.sh
-        force: true
-      become: true
-
-    - name: Install pipes.sh
-      make:
-        chdir: /tmp/pipes.sh
-        target: install
-      become: true
-
-    - name: Clean up pipes.sh source
-      file:
-        path: /tmp/pipes.sh
-        state: absent
-      become: true
+- name: Mount all filesystems from fstab
+  ansible.builtin.command: mount -a
+  become: true
+  tags: mount
