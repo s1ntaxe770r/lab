@@ -5,4 +5,7 @@ dep:
 	@ansible-galaxy collection install artis3n.tailscale
 	## install geerlingguy.docker 
 	@echo "\033[32mInstalling geerlingguy.docker collection...\033[0m"
-	@aansible-galaxy role install geerlingguy.docker
+	@ansible-galaxy role install geerlingguy.docker
+	## install geerlingguy.nfs
+	@echo "\033[32mInstalling geerlingguy.nfs role...\033[0m"
+	@ansible-galaxy role install geerlingguy.nfs
