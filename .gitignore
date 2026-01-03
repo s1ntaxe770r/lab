@@ -1,0 +1,13 @@
+# Ansible Vault Password Files
+.vault_pass
+*.vault_pass
+vault_pass.txt
+
+# Ansible temporary files
+*.retry
+
+# Backup logs
+backup.log
+
+# OS Files
+.DS_Store
