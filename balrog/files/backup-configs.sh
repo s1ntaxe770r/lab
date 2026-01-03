@@ -55,7 +55,18 @@ log_info "Backup file: ${BACKUP_FILENAME}"
 
 # Create tarball
 log_step "Creating compressed tarball..."
-if tar -czf "${BACKUP_TEMP_PATH}" -C "$(dirname ${BACKUP_SOURCE})" "$(basename ${BACKUP_SOURCE})" 2>/dev/null; then
+if tar czf "${BACKUP_TEMP_PATH}" \
+    --exclude='.git' \
+    --exclude='.gitignore' \
+    --exclude='node_modules' \
+    --exclude='*.log' \
+    --exclude='*.tmp' \
+    --exclude='.cache' \
+    --exclude='cache' \
+    --exclude='.DS_Store' \
+    --exclude='__pycache__' \
+    --exclude='*.pyc' \
+    -C "$(dirname ${BACKUP_SOURCE})" "$(basename ${BACKUP_SOURCE})"; then
     BACKUP_SIZE=$(du -h "${BACKUP_TEMP_PATH}" | cut -f1)
     log_success "Tarball created successfully (Size: ${BACKUP_SIZE})"
 else
