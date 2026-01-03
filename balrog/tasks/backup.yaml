@@ -1,0 +1,66 @@
+---
+#### ====== BACKUP CONFIGURATION ======
+
+- name: Ensure .config/rclone directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/.config/rclone"
+    state: directory
+    mode: "0755"
+  tags: backup
+
+- name: Generate rclone configuration for Cloudflare R2
+  copy:
+    dest: "{{ ansible_env.HOME }}/.config/rclone/rclone.conf"
+    mode: "0600"
+    content: |
+      [r2]
+      type = s3
+      provider = Cloudflare
+      access_key_id = {{ r2_access_key_id }}
+      secret_access_key = {{ r2_secret_access_key }}
+      endpoint = {{ r2_endpoint }}
+      acl = private
+  tags: backup
+
+- name: Copy backup script to target host
+  copy:
+    src: "backup-configs.sh"
+    dest: "{{ backup_script_path }}"
+    mode: "0755"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: true
+  tags: backup
+
+- name: Verify rclone installation
+  command: which rclone
+  register: rclone_check
+  changed_when: false
+  failed_when: rclone_check.rc != 0
+  tags: backup
+
+
+
+- name: Set up cron job for automated backups (Saturdays at 12am)
+  cron:
+    name: "Homelab configs backup to R2"
+    minute: "{{ backup_time_minute }}"
+    hour: "{{ backup_time_hour }}"
+    weekday: "{{ backup_weekday }}"
+    job: "{{ backup_script_path }} >> {{ ansible_env.HOME }}/backup.log 2>&1"
+    user: "{{ ansible_user }}"
+    state: present
+  tags: backup
+
+- name: Display backup information
+  debug:
+    msg:
+      - "Backup configuration completed!"
+      - "Script location: {{ backup_script_path }}"
+      - "Run manually with: {{ backup_script_path }}"
+      - "Scheduled: Saturdays at {{ backup_time_hour }}:{{ backup_time_minute }}"
+      - "Backup source: {{ backup_source_dir }}"
+      - "R2 bucket: {{ r2_bucket_name }}"
+  tags: backup
+
+#### ====== BACKUP CONFIGURATION ======

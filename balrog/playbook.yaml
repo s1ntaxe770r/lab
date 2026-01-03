@@ -3,11 +3,15 @@
   hosts: all
   # gather_facts: true
 
+  vars_files:
+    - ../vars.yaml
+    - vault.yaml
+
   tasks:
-    # - name: Install Essentials
-    #   import_tasks: tasks/essentials.yaml
+    - name: Install Essentials
+      import_tasks: tasks/essentials.yaml
     
-    #   tags: essentials
+      tags: essentials
 
     # - name: Install Utils
     #   import_tasks: tasks/utils.yaml
@@ -17,9 +21,13 @@
     #   import_tasks: tasks/services.yaml
     #   tags: services
 
-    - name: Start Containers
-      import_tasks: tasks/containers.yaml
-      tags: containers
+    - name: Configure Backups
+      import_tasks: tasks/backup.yaml
+      tags: backup
+
+    # - name: Start Containers
+    #   import_tasks: tasks/containers.yaml
+    #   tags: containers
 
 
     
@@ -28,4 +36,5 @@
 ## ansible-playbook playbook.yaml --tags "essentials"
 ## ansible-playbook playbook.yaml --tags "utils"
 ## ansible-playbook playbook.yaml --tags "services"
-## ansible-playbook playbook.yaml --tags "essentials,utils,services"
+## ansible-playbook playbook.yaml --tags "backup"
+## ansible-playbook playbook.yaml --tags "essentials,utils,services,backup"

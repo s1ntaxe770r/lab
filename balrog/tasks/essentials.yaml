@@ -20,7 +20,9 @@
     - build-essential
     - libssl-dev
     - libffi-dev
-    - golang-go 
+    - golang-go
     - net-tools
     - network-manager
     - tmux
+    - rclone
+    - neofetch
