@@ -3,6 +3,7 @@
 *.vault_pass
 vault_pass.txt
 balrog/vault.yaml
+balrog/VAULT*
 
 # Ansible temporary files
 *.retry
