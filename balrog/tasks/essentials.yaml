@@ -26,3 +26,22 @@
     - tmux
     - rclone
     - neofetch
+    - zsh
+
+- name: Install Oh My Zsh for specific users
+  become: true
+  become_user: "{{ item }}"
+  shell: |
+    if [ ! -d "$HOME/.oh-my-zsh" ]; then
+      sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    fi
+  with_items: "{{ ohmyzsh_users }}"
+  args:
+    executable: /bin/bash
+
+- name: Set zsh as default shell for specific users
+  become: true
+  user:
+    name: "{{ item }}"
+    shell: /usr/bin/zsh
+  with_items: "{{ ohmyzsh_users }}"

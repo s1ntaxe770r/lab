@@ -10,7 +10,6 @@
   tasks:
     - name: Install Essentials
       import_tasks: tasks/essentials.yaml
-    
       tags: essentials
 
     # - name: Install Utils
@@ -21,9 +20,9 @@
     #   import_tasks: tasks/services.yaml
     #   tags: services
 
-    - name: Configure Backups
-      import_tasks: tasks/backup.yaml
-      tags: backup
+    # - name: Configure Backups
+    #   import_tasks: tasks/backup.yaml
+    #   tags: backup
 
     # - name: Start Containers
     #   import_tasks: tasks/containers.yaml

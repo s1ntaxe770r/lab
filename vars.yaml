@@ -1,6 +1,11 @@
 mount_path: /mnt/thomas
 mount_uuid: 66ce4e71-7215-4897-b7cc-9ca4fe24d28e
 
+# Oh My Zsh Configuration
+ohmyzsh_users:
+  - e770r
+  - root
+
 # Cloudflare R2 Backup Configuration
 # Sensitive values are stored in vault.yaml (encrypted with ansible-vault)
 r2_account_id: "{{ vault_r2_account_id }}"
