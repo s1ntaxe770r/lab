@@ -60,6 +60,9 @@ pages:
               - title: Grafana
                 url: http://chronos:3000
                 icon: sh:grafana
+              - title: Lidarr
+                url: http://chronos:8686
+                icon: sh:lidarr
 
           - type: group
             widgets:
