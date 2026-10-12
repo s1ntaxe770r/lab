@@ -12,27 +12,42 @@
       import_tasks: tasks/essentials.yaml
       tags: essentials
 
-    # - name: Install Utils
-    #   import_tasks: tasks/utils.yaml
-    #   tags: utils
+    - name: Install Utils
+      import_tasks: tasks/utils.yaml
+      tags: utils
 
-    # - name: Install Services
-    #   import_tasks: tasks/services.yaml
-    #   tags: services
+    - name: Install Services
+      import_tasks: tasks/services.yaml
+      tags: services
 
     # - name: Configure Backups
     #   import_tasks: tasks/backup.yaml
     #   tags: backup
 
-    # - name: Start Containers
-    #   import_tasks: tasks/containers.yaml
-    #   tags: containers
+    - name: Start Containers
+      import_tasks: tasks/containers.yaml
+      tags: containers
 
+    - name: Setup TLS
+      import_tasks: tasks/tls.yaml
+      tags: tls
 
-    
+    # - name: Docker & Media Backup
+    #   import_tasks: tasks/backup-docker.yaml
+    #   tags: backup-docker
 
+    - name: Setup Telegram qBittorrent Notifier
+      import_tasks: tasks/telegram-notif.yaml
+      tags: telegram-notif
+
+  handlers:
+    - name: Restart telegram-notif
+      become: true
+      ansible.builtin.systemd:
+        name: telegram-notif
+        state: restarted
 ## To run only specific tasks, use the following command:
-## ansible-playbook playbook.yaml --tags "essentials"
+# ansible-playbook playbook.yaml --tags "essentials"
 ## ansible-playbook playbook.yaml --tags "utils"
 ## ansible-playbook playbook.yaml --tags "services"
 ## ansible-playbook playbook.yaml --tags "backup"

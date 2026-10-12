@@ -1,0 +1,194 @@
+---
+#### ====== TLS (Caddy + Tailscale certs + local DNS) ======
+
+- name: Create tailscale cert directory
+  become: true
+  file:
+    path: "/etc/ssl/tailscale/{{ tailnet_hostname }}"
+    state: directory
+    mode: "0700"
+  tags: tls
+
+- name: Copy tailscale-cert-renew script
+  become: true
+  copy:
+    src: "tailscale-cert-renew.sh"
+    dest: "/usr/local/bin/tailscale-cert-renew.sh"
+    mode: "0755"
+  tags: tls
+
+- name: Install tailscale-cert-renew systemd service
+  become: true
+  template:
+    src: "tls/tailscale-cert-renew.service.j2"
+    dest: "/etc/systemd/system/tailscale-cert-renew.service"
+    mode: "0644"
+  tags: tls
+
+- name: Install tailscale-cert-renew systemd timer
+  become: true
+  template:
+    src: "tls/tailscale-cert-renew.timer.j2"
+    dest: "/etc/systemd/system/tailscale-cert-renew.timer"
+    mode: "0644"
+  tags: tls
+
+- name: Enable and start tailscale-cert-renew timer
+  become: true
+  systemd:
+    name: tailscale-cert-renew.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: tls
+
+- name: Run initial cert fetch
+  become: true
+  ansible.builtin.command: /usr/local/bin/tailscale-cert-renew.sh {{ tailnet_hostname }}
+  args:
+    creates: "/etc/ssl/tailscale/{{ tailnet_hostname }}/fullchain.pem"
+  tags: tls
+
+#### ====== LAN TLS (Cloudflare DNS-01 wildcard cert, public DNS -> private IP) ======
+
+- name: Create Cloudflare A record for homelab domain (apex)
+  community.general.cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "{{ homelab_subdomain }}"
+    type: A
+    value: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    proxied: false
+    api_token: "{{ cloudflare_api_token }}"
+    state: present
+  delegate_to: localhost
+  become: false
+  tags: tls
+
+- name: Create Cloudflare wildcard A record for homelab subdomains
+  community.general.cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "*.{{ homelab_subdomain }}"
+    type: A
+    value: "{{ hostvars[inventory_hostname].ansible_default_ipv4.address }}"
+    proxied: false
+    api_token: "{{ cloudflare_api_token }}"
+    state: present
+  delegate_to: localhost
+  become: false
+  tags: tls
+
+- name: Install acme.sh
+  ansible.builtin.shell: "curl https://get.acme.sh | sh -s email=admin@{{ cloudflare_zone }}"
+  args:
+    creates: "{{ ansible_env.HOME }}/.acme.sh/acme.sh"
+    executable: /bin/bash
+  tags: tls
+
+- name: Create acme.sh Cloudflare credentials env file
+  copy:
+    content: |
+      CF_Token="{{ cloudflare_api_token }}"
+      CF_Account_ID="{{ cloudflare_account_id }}"
+    dest: "{{ ansible_env.HOME }}/.acme-cf-env"
+    mode: "0600"
+  tags: tls
+
+- name: Create cloudflare cert directory
+  become: true
+  file:
+    path: "/etc/ssl/cloudflare/{{ homelab_domain }}"
+    state: directory
+    mode: "0700"
+  tags: tls
+
+- name: Issue wildcard cert via acme.sh + Cloudflare DNS-01
+  become: true
+  ansible.builtin.shell: |
+    set -eao pipefail
+    source {{ ansible_env.HOME }}/.acme-cf-env
+    set +a
+    {{ ansible_env.HOME }}/.acme.sh/acme.sh --issue \
+      --dns dns_cf \
+      -d "{{ homelab_domain }}" \
+      -d "*.{{ homelab_domain }}"
+  args:
+    executable: /bin/bash
+    creates: "{{ ansible_env.HOME }}/.acme.sh/{{ homelab_domain }}_ecc/{{ homelab_domain }}.cer"
+  tags: tls
+
+- name: Install issued cert to /etc/ssl/cloudflare and wire up caddy reload
+  become: true
+  ansible.builtin.shell: |
+    set -eao pipefail
+    source {{ ansible_env.HOME }}/.acme-cf-env
+    set +a
+    {{ ansible_env.HOME }}/.acme.sh/acme.sh --install-cert \
+      -d "{{ homelab_domain }}" \
+      --key-file "/etc/ssl/cloudflare/{{ homelab_domain }}/privkey.pem" \
+      --fullchain-file "/etc/ssl/cloudflare/{{ homelab_domain }}/fullchain.pem" \
+      --reloadcmd "docker exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile"
+  args:
+    executable: /bin/bash
+    creates: "/etc/ssl/cloudflare/{{ homelab_domain }}/fullchain.pem"
+  tags: tls
+
+#### ====== LAN TLS (Cloudflare DNS-01 wildcard cert, public DNS -> private IP) ======
+
+- name: Create caddy config directory
+  file:
+    path: "~/configs/caddy"
+    state: directory
+    mode: "0755"
+  tags: tls
+
+- name: Copy Caddyfile
+  template:
+    src: "tls/Caddyfile.j2"
+    dest: "~/configs/caddy/Caddyfile"
+    mode: "0644"
+  tags: tls
+
+- name: Create caddy container
+  become: true
+  community.docker.docker_container:
+    name: caddy
+    image: "caddy:latest"
+    network_mode: host
+    volumes:
+      - "~/configs/caddy/Caddyfile:/etc/caddy/Caddyfile:ro"
+      - "/etc/ssl/tailscale:/etc/ssl/tailscale:ro"
+      - "/etc/ssl/cloudflare:/etc/ssl/cloudflare:ro"
+      - "caddy_data:/data"
+    restart_policy: unless-stopped
+    state: started
+  tags: tls
+
+- name: Create dnsmasq config directory
+  file:
+    path: "~/configs/dnsmasq"
+    state: directory
+    mode: "0755"
+  tags: tls
+
+- name: Copy dnsmasq config
+  template:
+    src: "tls/dnsmasq.conf.j2"
+    dest: "~/configs/dnsmasq/dnsmasq.conf"
+    mode: "0644"
+  tags: tls
+
+- name: Create dnsmasq container
+  become: true
+  community.docker.docker_container:
+    name: dnsmasq
+    image: "4km3/dnsmasq:latest"
+    network_mode: host
+    capabilities:
+      - NET_ADMIN
+    volumes:
+      - "~/configs/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf:ro"
+    restart_policy: unless-stopped
+    state: started
+  tags: tls
+
+#### ====== TLS (Caddy + Tailscale certs + local DNS) ======

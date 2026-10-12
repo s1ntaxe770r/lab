@@ -1,36 +1,21 @@
-## this would be for things like gotop, neofetch etc. 
+## this would be for things like gotop, neofetch etc.
 ---
 
-# - name: Install Utils
-#   apt:
-#     name: "{{ item }}"
-#     state: present
-#   with_items:
-#     - neofetch
-#     - tmux
-#     - zsh
-#     - speedtest-cli
 
-# - name: Install pipes.sh
-#   block:
-#     - name: Clone pipes.sh repository
-#       git:
-#         repo: https://github.com/pipeseroni/pipes.sh.git
-#         dest: /tmp/pipes.sh
-#         force: true
-#       become: true
 
-#     - name: Install pipes.sh
-#       make:
-#         chdir: /tmp/pipes.sh
-#         target: install
-#       become: true
-
-#     - name: Clean up pipes.sh source
-#       file:
-#         path: /tmp/pipes.sh
-#         state: absent
-#       become: true
+- name: Install lazydocker
+  shell: |
+    cd /tmp
+    curl -L https://github.com/jesseduffield/lazydocker/releases/download/v0.24.3/lazydocker_0.24.3_Linux_x86_64.tar.gz -o lazydocker.tar.gz
+    tar -xzf lazydocker.tar.gz
+    mv lazydocker /usr/local/bin/
+    chmod +x /usr/local/bin/lazydocker
+    rm -f lazydocker.tar.gz
+  args:
+    executable: /bin/bash
+    creates: /usr/local/bin/lazydocker
+  become: true
+  tags: utils
 
 - name: Ensure /mnt/thomas directory exists for mounting drive
   file:
@@ -69,18 +54,44 @@
   tags: backup
 
   
-- name: Ensure simple /dev/sdb fstab entry for /mnt/thomas
+- name: Get UUID of /dev/sdb
+  ansible.builtin.shell: blkid -s UUID -o value /dev/sdb
+  register: sdb_uuid
+  become: true
+  changed_when: false
+  tags: fstab
+
+- name: Ensure UUID-based fstab entry for /mnt/thomas
   ansible.builtin.lineinfile:
     path: /etc/fstab
-    regexp: "^/dev/sdb\\s+/mnt/thomas\\s"
-    line: "/dev/sdb /mnt/thomas auto defaults 0 2"
+    regexp: "^(UUID={{ sdb_uuid.stdout }}|/dev/sdb)\\s+/mnt/thomas\\s"
+    line: "UUID={{ sdb_uuid.stdout }} /mnt/thomas auto defaults,nofail 0 2"
     state: present
     insertafter: EOF
     backup: false
   become: true
   tags: fstab
+  when: sdb_uuid.stdout != ""
 
 - name: Mount all filesystems from fstab
   ansible.builtin.command: mount -a
   become: true
   tags: mount
+
+#### ====== EXTEND LVM TO USE FULL INTERNAL SSD ======
+
+- name: Extend logical volume to use all free space
+  ansible.builtin.command: lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+  become: true
+  register: lv_extend
+  changed_when: "'successfully resized' in lv_extend.stdout"
+  failed_when: lv_extend.rc != 0 and 'matches existing size' not in lv_extend.stderr
+  tags: extend-lv
+
+- name: Resize filesystem to fill extended volume
+  ansible.builtin.command: resize2fs /dev/ubuntu-vg/ubuntu-lv
+  become: true
+  tags: extend-lv
+
+#### ====== EXTEND LVM TO USE FULL INTERNAL SSD ======
+

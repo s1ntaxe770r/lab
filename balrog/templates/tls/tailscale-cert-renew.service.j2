@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew Tailscale-issued TLS cert for {{ tailnet_hostname }}
+After=network-online.target tailscaled.service docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/tailscale-cert-renew.sh {{ tailnet_hostname }}

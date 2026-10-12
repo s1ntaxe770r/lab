@@ -1,0 +1,65 @@
+---
+#### ====== TELEGRAM QBIT NOTIFIER ======
+
+- name: Install uv
+  ansible.builtin.shell: curl -LsSf https://astral.sh/uv/install.sh | sh
+  args:
+    creates: "{{ ansible_env.HOME }}/.local/bin/uv"
+  tags: telegram-notif
+
+- name: Create telegram-notif app directory
+  file:
+    path: "~/configs/telegram-notif/app"
+    state: directory
+    mode: "0755"
+  tags: telegram-notif
+
+- name: Copy telegram-notif application code
+  copy:
+    src: "telegram-notif/app/"
+    dest: "~/configs/telegram-notif/app/"
+    mode: "0644"
+  notify: Restart telegram-notif
+  tags: telegram-notif
+
+- name: Copy telegram-notif pyproject.toml
+  copy:
+    src: "telegram-notif/pyproject.toml"
+    dest: "~/configs/telegram-notif/pyproject.toml"
+    mode: "0644"
+  tags: telegram-notif
+
+- name: Template telegram-notif environment file
+  template:
+    src: "telegram-notif/env.j2"
+    dest: "~/configs/telegram-notif/.env"
+    mode: "0600"
+  tags: telegram-notif
+
+- name: Sync telegram-notif Python dependencies with uv
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.local/bin/uv sync"
+  args:
+    chdir: "{{ ansible_env.HOME }}/configs/telegram-notif"
+  register: uv_sync
+  changed_when: "'Installed' in uv_sync.stderr"
+  tags: telegram-notif
+
+- name: Install telegram-notif systemd service
+  become: true
+  template:
+    src: "telegram-notif/telegram-notif.service.j2"
+    dest: "/etc/systemd/system/telegram-notif.service"
+    mode: "0644"
+  notify: Restart telegram-notif
+  tags: telegram-notif
+
+- name: Enable and start telegram-notif service
+  become: true
+  systemd:
+    name: telegram-notif
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: telegram-notif
+
+#### ====== TELEGRAM QBIT NOTIFIER ======

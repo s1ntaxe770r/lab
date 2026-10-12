@@ -1,0 +1,41 @@
+---
+- name: Restore Docker Containers from Backup
+  hosts: all
+
+  vars_files:
+    - ../vars.yaml
+    - vault.yaml
+
+  vars:
+    container_backup_dir: /mnt/thomas/containers
+
+  tasks:
+    - name: Find all .tar files in container backup directory
+      ansible.builtin.find:
+        paths: "{{ container_backup_dir }}"
+        patterns: "*.tar"
+      register: tar_files
+      become: true
+
+    - name: Fail if no tar files found
+      ansible.builtin.fail:
+        msg: "No .tar files found in {{ container_backup_dir }}"
+      when: tar_files.files | length == 0
+
+    - name: Load each Docker image from tar
+      ansible.builtin.command: docker load -i "{{ item.path }}"
+      loop: "{{ tar_files.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      become: true
+      register: load_results
+
+    - name: Show load results
+      ansible.builtin.debug:
+        msg: "{{ item.stdout_lines }}"
+      loop: "{{ load_results.results }}"
+      loop_control:
+        label: "{{ item.item.path | basename }}"
+
+## To run:
+## ansible-playbook restore-containers.yaml

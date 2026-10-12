@@ -1,18 +1,16 @@
+---
+- name: Setup Docker
+  import_role:
+    name: geerlingguy.docker
+  tags: docker
 
-
-# - name: Setup Docker
-#   import_role:
-#     name: geerlingguy.docker
-#   tags: docker
-
-# - name: Ensure current user is added to docker group
-#   become: true
-#   ansible.builtin.user:
-#     name: "{{ ansible_user }}"
-#     groups: docker
-#     append: true
-#   tags: docker
-
+- name: Ensure current user is added to docker group
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+  tags: docker
 # - name: Setup NFS
 #   become: true
 #   block:

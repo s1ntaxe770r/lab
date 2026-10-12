@@ -1,0 +1,18 @@
+{% for svc in tls_services %}
+{{ tailnet_hostname }}{% if svc.tls_port != 443 %}:{{ svc.tls_port }}{% endif %} {
+    tls /etc/ssl/tailscale/{{ tailnet_hostname }}/fullchain.pem /etc/ssl/tailscale/{{ tailnet_hostname }}/privkey.pem
+    reverse_proxy localhost:{{ svc.port }}
+}
+
+{% endfor %}
+{% for svc in tls_services %}
+{% if svc.name == 'glance' %}
+{{ homelab_domain }} {
+{% else %}
+{{ svc.name }}.{{ homelab_domain }} {
+{% endif %}
+    tls /etc/ssl/cloudflare/{{ homelab_domain }}/fullchain.pem /etc/ssl/cloudflare/{{ homelab_domain }}/privkey.pem
+    reverse_proxy localhost:{{ svc.port }}
+}
+
+{% endfor %}

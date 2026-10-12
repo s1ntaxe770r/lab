@@ -63,6 +63,9 @@ pages:
               - title: Lidarr
                 url: http://chronos:8686
                 icon: sh:lidarr
+              - title: Plex
+                icon: sh:plex
+                url: http://chronos:32400
 
           - type: group
             widgets:

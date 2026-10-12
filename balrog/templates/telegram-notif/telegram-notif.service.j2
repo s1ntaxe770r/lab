@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram qBittorrent notifier
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory={{ ansible_env.HOME }}/configs/telegram-notif
+EnvironmentFile={{ ansible_env.HOME }}/configs/telegram-notif/.env
+ExecStart={{ ansible_env.HOME }}/.local/bin/uv run --project {{ ansible_env.HOME }}/configs/telegram-notif python -m app.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

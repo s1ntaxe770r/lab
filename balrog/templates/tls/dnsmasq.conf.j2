@@ -1,0 +1,6 @@
+listen-address={{ ansible_default_ipv4.address }}
+bind-interfaces
+no-resolv
+server=1.1.1.1
+server=1.0.0.1
+address=/{{ tailnet_hostname }}/{{ ansible_default_ipv4.address }}

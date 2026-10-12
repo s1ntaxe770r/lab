@@ -1,0 +1,39 @@
+---
+#### ====== DOCKER & MEDIA BACKUP ======
+
+- name: Copy docker backup script to target host
+  copy:
+    src: "backup-docker.sh"
+    dest: "{{ docker_backup_script_path | default('/usr/local/bin/backup-docker.sh') }}"
+    mode: "0755"
+    owner: root
+    group: root
+  become: true
+  tags: backup-docker
+
+- name: Ensure container backup directory exists
+  file:
+    path: /mnt/thomas/containers
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  become: true
+  tags: backup-docker
+
+- name: Ensure media backup directory exists
+  file:
+    path: /mnt/thomas/media
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  become: true
+  tags: backup-docker
+
+- name: Run docker & media backup
+  command: /usr/local/bin/backup-docker.sh
+  become: true
+  tags: backup-docker
+
+#### ====== DOCKER & MEDIA BACKUP ======
